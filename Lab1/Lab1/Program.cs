@@ -1,26 +1,26 @@
 using System.Globalization;
 
+// Лабораторная работа №1, вариант 2
+
 namespace Lab1
 {
     internal class Program
     {
-        const double EPS = 1e-5; // точность
-        const double ZERO = 1e-10; // меньше этого считаем нулем
-        const int MAX_ITER = 1000; // максимум итераций
+        const double EPS = 1e-5; // точность для метода Зейделя
+        const double ZERO = 1e-10; // если число меньше этого, считаем что это ноль
+        const int MAX_ITER = 1000; // чтобы не зациклиться, если метод расходится
 
         static void Main(string[] args)
         {
-            // чтобы числа были через точку
+            // иначе на русской винде дробные числа будут через запятую
             Thread.CurrentThread.CurrentCulture = CultureInfo.InvariantCulture;
 
-            // меню
             while (true)
             {
                 Console.WriteLine();
                 Console.WriteLine("===== Лабораторная работа №1. Решение СЛАУ =====");
                 Console.WriteLine("1 - метод Гаусса с выбором главного элемента");
-                Console.WriteLine("2 - метод простой итерации");
-                Console.WriteLine("3 - метод Зейделя");
+                Console.WriteLine("2 - метод Зейделя");
                 Console.WriteLine("0 - выход");
                 Console.Write("Выберите пункт: ");
                 string choice = Console.ReadLine();
@@ -40,13 +40,6 @@ namespace Lab1
                     int n;
                     double[,] a = ReadSystem("input2.txt", out n);
                     if (a != null)
-                        SimpleIteration(a, n);
-                }
-                else if (choice == "3")
-                {
-                    int n;
-                    double[,] a = ReadSystem("input2.txt", out n);
-                    if (a != null)
                         Seidel(a, n);
                 }
                 else
@@ -56,7 +49,7 @@ namespace Lab1
             }
         }
 
-        // ввод системы из файла или с клавиатуры
+        // читаем систему: сначала n, потом n строк по n+1 числу (последнее - свободный член)
         static double[,] ReadSystem(string defaultFile, out int n)
         {
             n = 0;
@@ -66,7 +59,6 @@ namespace Lab1
             {
                 if (mode == "2")
                 {
-                    // с клавиатуры
                     Console.Write("Порядок системы n = ");
                     n = int.Parse(Console.ReadLine());
                     double[,] a = new double[n, n + 1];
@@ -88,7 +80,6 @@ namespace Lab1
                 }
                 else
                 {
-                    // из файла
                     Console.Write("Имя файла (Enter - {0}): ", defaultFile);
                     string name = Console.ReadLine();
                     if (name == "")
@@ -113,13 +104,12 @@ namespace Lab1
             }
         }
 
-        // строку в число
+        // чтобы можно было писать и 2.5 и 2,5
         static double ToDouble(string s)
         {
             return double.Parse(s.Replace(',', '.'));
         }
 
-        // вывод расширенной матрицы
         static void PrintMatrix(double[,] a, int n)
         {
             for (int i = 0; i < n; i++)
@@ -130,14 +120,14 @@ namespace Lab1
             }
         }
 
-        // задание 1 - метод Гаусса с выбором главного элемента
+        // Задание 1. Метод Гаусса с выбором главного элемента
         static void Gauss(double[,] a, int n)
         {
-            // копия для проверки в конце
+            // сохраняем исходную матрицу, чтобы в конце проверить ответ
             double[,] a0 = (double[,])a.Clone();
 
-            int[] mainRow = new int[n]; // номера главных строк
-            int[] mainCol = new int[n]; // номера столбцов главных элементов
+            int[] mainRow = new int[n]; // какая строка была главной на каждом шаге
+            int[] mainCol = new int[n]; // в каком столбце был главный элемент
             bool[] usedRow = new bool[n];
             bool[] usedCol = new bool[n];
 
@@ -145,10 +135,9 @@ namespace Lab1
             Console.WriteLine("Исходная расширенная матрица:");
             PrintMatrix(a, n);
 
-            // прямой ход
             for (int k = 0; k < n; k++)
             {
-                // ищем главный элемент
+                // ищем самый большой по модулю элемент среди оставшихся строк и столбцов
                 int p = -1, q = -1;
                 double max = 0;
                 for (int i = 0; i < n; i++)
@@ -166,14 +155,14 @@ namespace Lab1
                     }
                 }
 
-                // главный элемент = 0, делить на него нельзя
+                // если даже самый большой элемент 0, то делить не на что и определитель = 0
                 if (max < ZERO)
                 {
                     Console.WriteLine();
                     Console.WriteLine("Шаг {0}: все оставшиеся коэффициенты равны 0, главный элемент выбрать нельзя.", k + 1);
                     Console.WriteLine("Определитель системы равен 0, ранг матрицы системы = {0}.", k);
 
-                    // проверяем свободные члены оставшихся строк
+                    // смотрим, что осталось справа в неиспользованных строках
                     bool sovmestna = true;
                     for (int i = 0; i < n; i++)
                         if (!usedRow[i] && Math.Abs(a[i, n]) > ZERO)
@@ -199,7 +188,7 @@ namespace Lab1
                 Console.WriteLine();
                 Console.WriteLine("Шаг {0}. Главный элемент a[{1},{2}] = {3:F4}", k + 1, p + 1, q + 1, a[p, q]);
 
-                // прибавляем главную строку умноженную на m
+                // зануляем столбец q во всех оставшихся строках
                 for (int i = 0; i < n; i++)
                 {
                     if (i == p || usedRow[i]) continue;
@@ -207,10 +196,10 @@ namespace Lab1
                     Console.WriteLine("  m{0} = -a[{0},{1}] / a[{2},{1}] = {3:F6}", i + 1, q + 1, p + 1, m);
                     for (int j = 0; j <= n; j++)
                         a[i, j] += m * a[p, j];
-                    a[i, q] = 0;
+                    a[i, q] = 0; // чтобы вместо нуля не осталось что-то вроде 1e-17
                 }
 
-                // отбрасываем главную строку и столбец
+                // эту строку и столбец больше не трогаем
                 usedRow[p] = true;
                 usedCol[q] = true;
                 mainRow[k] = p;
@@ -220,7 +209,6 @@ namespace Lab1
                 PrintMatrix(a, n);
             }
 
-            // обратный ход
             Console.WriteLine();
             Console.WriteLine("Обратный ход (по главным строкам, начиная с последней):");
             double[] x = BackSubstitution(a, n, n, mainRow, mainCol);
@@ -233,7 +221,7 @@ namespace Lab1
             Check(a0, x, n);
         }
 
-        // обратный ход, свободные неизвестные = 0
+        // обратный ход: идем по главным строкам с конца и находим x
         static double[] BackSubstitution(double[,] a, int n, int steps, int[] mainRow, int[] mainCol)
         {
             double[] x = new double[n];
@@ -251,7 +239,7 @@ namespace Lab1
             return x;
         }
 
-        // проверка подстановкой
+        // подставляем x в систему и считаем невязки
         static void Check(double[,] a, double[] x, int n)
         {
             Console.WriteLine();
@@ -265,9 +253,10 @@ namespace Lab1
             }
         }
 
-        // вывод матрицы C и вектора d для x = Cx + d
+        // выражаем каждый x из своего уравнения (x = Cx + d) и печатаем C и d
         static bool PrintCD(double[,] a, int n)
         {
+            // на диагонали не должно быть нулей, иначе делить нельзя
             for (int i = 0; i < n; i++)
             {
                 if (Math.Abs(a[i, i]) < ZERO)
@@ -293,10 +282,10 @@ namespace Lab1
             return true;
         }
 
-        // нормы матрицы C и условие сходимости
+        // две нормы матрицы C: если хотя бы одна меньше 1, то метод сходится
         static bool CheckConvergence(double[,] a, int n)
         {
-            // октаэдрическая (по столбцам)
+            // по столбцам (подчинена октаэдрической норме вектора)
             double norm1 = 0;
             Console.Write("Суммы модулей по столбцам:");
             for (int j = 0; j < n; j++)
@@ -311,7 +300,7 @@ namespace Lab1
             }
             Console.WriteLine();
 
-            // кубическая (по строкам)
+            // по строкам (подчинена кубической норме вектора)
             double normInf = 0;
             Console.Write("Суммы модулей по строкам: ");
             for (int i = 0; i < n; i++)
@@ -337,7 +326,6 @@ namespace Lab1
             return false;
         }
 
-        // спросить, считать ли дальше
         static bool AskContinue()
         {
             Console.Write("Всё равно выполнять итерации? (y/n): ");
@@ -345,7 +333,6 @@ namespace Lab1
             return ans == "y" || ans == "Y" || ans == "д" || ans == "Д";
         }
 
-        // шапка таблицы
         static void PrintHead(int n)
         {
             Console.WriteLine();
@@ -355,79 +342,8 @@ namespace Lab1
             Console.WriteLine("{0,14}", "max|dx|");
         }
 
-        // задание 2 - метод простой итерации
-        static void SimpleIteration(double[,] a, int n)
-        {
-            Console.WriteLine();
-            Console.WriteLine("Метод простой итерации. Система:");
-            PrintMatrix(a, n);
-            if (!PrintCD(a, n))
-                return;
-            if (!CheckConvergence(a, n) && !AskContinue())
-                return;
-
-            double[] xOld = new double[n]; // предыдущая итерация
-            double[] x = new double[n]; // текущая итерация
-
-            // начальное приближение x0 = d
-            for (int i = 0; i < n; i++)
-                xOld[i] = a[i, n] / a[i, i];
-
-            PrintHead(n);
-            Console.Write("{0,4}", 0);
-            for (int i = 0; i < n; i++)
-                Console.Write("{0,12:F6}", xOld[i]);
-            Console.WriteLine();
-
-            int k = 0;
-            double diff;
-            do
-            {
-                k++;
-                for (int i = 0; i < n; i++)
-                {
-                    double s = a[i, n];
-                    for (int j = 0; j < n; j++)
-                        if (j != i)
-                            s -= a[i, j] * xOld[j];
-                    x[i] = s / a[i, i];
-                }
-
-                // разница между итерациями
-                diff = 0;
-                for (int i = 0; i < n; i++)
-                {
-                    if (Math.Abs(x[i] - xOld[i]) > diff)
-                        diff = Math.Abs(x[i] - xOld[i]);
-                    xOld[i] = x[i];
-                }
-
-                Console.Write("{0,4}", k);
-                for (int i = 0; i < n; i++)
-                    Console.Write("{0,12:F6}", x[i]);
-                Console.WriteLine("{0,14:E2}", diff);
-
-                if (diff > 1e10 || double.IsNaN(diff))
-                {
-                    Console.WriteLine("Значения неограниченно растут - итерации расходятся.");
-                    return;
-                }
-            } while (diff >= EPS && k < MAX_ITER);
-
-            if (diff >= EPS)
-            {
-                Console.WriteLine("За {0} итераций точность не достигнута.", MAX_ITER);
-                return;
-            }
-
-            Console.WriteLine();
-            Console.WriteLine("Точность {0} достигнута за {1} итераций. Решение:", EPS, k);
-            for (int i = 0; i < n; i++)
-                Console.WriteLine("x{0} = {1,12:F6}", i + 1, x[i]);
-            Check(a, x, n);
-        }
-
-        // задание 2 - метод Зейделя
+        // Задание 2. Метод Зейделя
+        // x храним в одном массиве: новое значение сразу пишем на место старого
         static void Seidel(double[,] a, int n)
         {
             Console.WriteLine();
@@ -440,7 +356,7 @@ namespace Lab1
 
             double[] x = new double[n];
 
-            // начальное приближение x0 = d
+            // начальное приближение берем равным d
             for (int i = 0; i < n; i++)
                 x[i] = a[i, n] / a[i, i];
 
@@ -461,8 +377,9 @@ namespace Lab1
                     double s = a[i, n];
                     for (int j = 0; j < n; j++)
                         if (j != i)
-                            s -= a[i, j] * x[j]; // при j < i тут уже новые x
+                            s -= a[i, j] * x[j]; // x[j] при j < i уже новые, с этой итерации
                     s = s / a[i, i];
+                    // запоминаем самое большое изменение x за итерацию
                     if (Math.Abs(s - x[i]) > diff)
                         diff = Math.Abs(s - x[i]);
                     x[i] = s;
@@ -473,6 +390,7 @@ namespace Lab1
                     Console.Write("{0,12:F6}", x[i]);
                 Console.WriteLine("{0,14:E2}", diff);
 
+                // если числа улетели в бесконечность, дальше считать смысла нет
                 if (diff > 1e10 || double.IsNaN(diff))
                 {
                     Console.WriteLine("Значения неограниченно растут - итерации расходятся.");
